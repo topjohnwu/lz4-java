@@ -26,7 +26,7 @@ import java.util.Arrays;
  * {@link LZ4FastDecompressor} but do not require the size of the original data to
  * be known.
  */
-public abstract class LZ4SafeDecompressor implements LZ4UnknownSizeDecompressor {
+public abstract class LZ4SafeDecompressor {
 
   /**
    * Decompresses <code>src[srcOff:srcOff+srcLen]</code> into

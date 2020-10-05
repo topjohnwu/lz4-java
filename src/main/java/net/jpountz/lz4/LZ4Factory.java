@@ -291,26 +291,6 @@ public final class LZ4Factory {
   }
 
   /**
-   * Returns a {@link LZ4UnknownSizeDecompressor} instance.
-   * @deprecated use {@link #safeDecompressor()}
-   *
-   * @return a {@link LZ4UnknownSizeDecompressor} instance
-   */
-  public LZ4UnknownSizeDecompressor unknownSizeDecompressor() {
-    return safeDecompressor();
-  }
-
-  /**
-   * Returns a {@link LZ4Decompressor} instance.
-   * @deprecated use {@link #fastDecompressor()}
-   *
-   * @return a {@link LZ4Decompressor} instance
-   */
-  public LZ4Decompressor decompressor() {
-    return fastDecompressor();
-  }
-
-  /**
    * Prints the fastest instance.
    *
    * @param args no argument required

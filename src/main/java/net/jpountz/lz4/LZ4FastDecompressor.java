@@ -32,7 +32,7 @@ import java.nio.ByteBuffer;
  *
  * @see LZ4Factory#nativeInstance()
  */
-public abstract class LZ4FastDecompressor implements LZ4Decompressor {
+public abstract class LZ4FastDecompressor {
 
   /** Decompresses <code>src[srcOff:]</code> into <code>dest[destOff:destOff+destLen]</code>
    * and returns the number of bytes read from <code>src</code>.
