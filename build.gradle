@@ -1,4 +1,7 @@
 apply plugin: 'java-library'
+apply plugin: 'maven'
+
+group = 'com.github.topjohnwu'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -7,5 +10,14 @@ java {
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    archiveClassifier.set('sources')
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives sourcesJar
 }
 
