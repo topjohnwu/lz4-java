@@ -69,11 +69,11 @@ public class LZ4FrameInputStream extends FilterInputStream {
    * @throws IOException if an I/O error occurs
    *
    * @see #LZ4FrameInputStream(InputStream, LZ4SafeDecompressor,  XXHash32)
-   * @see LZ4Factory#fastestInstance()
+   * @see LZ4Factory#getInstance()
    * @see XXHashFactory#fastestInstance()
    */
   public LZ4FrameInputStream(InputStream in) throws IOException {
-    this(in, LZ4Factory.fastestInstance().safeDecompressor(), XXHashFactory.fastestInstance().hash32());
+    this(in, LZ4Factory.getInstance().safeDecompressor(), XXHashFactory.fastestInstance().hash32());
   }
 
   /**
@@ -84,11 +84,11 @@ public class LZ4FrameInputStream extends FilterInputStream {
    * @throws IOException if an I/O error occurs
    *
    * @see #LZ4FrameInputStream(InputStream, LZ4SafeDecompressor,  XXHash32)
-   * @see LZ4Factory#fastestInstance()
+   * @see LZ4Factory#getInstance()
    * @see XXHashFactory#fastestInstance()
    */
   public LZ4FrameInputStream(InputStream in, boolean readSingleFrame) throws IOException {
-    this(in, LZ4Factory.fastestInstance().safeDecompressor(), XXHashFactory.fastestInstance().hash32(), readSingleFrame);
+    this(in, LZ4Factory.getInstance().safeDecompressor(), XXHashFactory.fastestInstance().hash32(), readSingleFrame);
   }
 
   /**

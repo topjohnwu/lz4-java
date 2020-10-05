@@ -114,7 +114,7 @@ public class LZ4FrameOutputStream extends FilterOutputStream {
    * @throws IOException if an I/O error occurs
    */
   public LZ4FrameOutputStream(OutputStream out, BLOCKSIZE blockSize, long knownSize, FLG.Bits... bits) throws IOException {
-    this(out, blockSize, knownSize, LZ4Factory.fastestInstance().fastCompressor(),
+    this(out, blockSize, knownSize, LZ4Factory.getInstance().fastCompressor(),
 	 XXHashFactory.fastestInstance().hash32(), bits);
   }
 

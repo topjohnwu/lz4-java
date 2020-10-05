@@ -16,27 +16,10 @@ package net.jpountz.xxhash;
  * limitations under the License.
  */
 
-import java.lang.reflect.Field;
 import java.util.Random;
-
-import net.jpountz.util.Native;
-import net.jpountz.util.Utils;
 
 /**
  * Entry point to get {@link XXHash32} and {@link StreamingXXHash32} instances.
- * <p>
- * This class has 3 instances<ul>
- * <li>a {@link #nativeInstance() native} instance which is a JNI binding to
- * <a href="http://code.google.com/p/xxhash/">the original LZ4 C implementation</a>.
- * <li>a {@link #safeInstance() safe Java} instance which is a pure Java port
- * of the original C library,</li>
- * <li>an {@link #unsafeInstance() unsafe Java} instance which is a Java port
- * using the unofficial {@link sun.misc.Unsafe} API.
- * </ul>
- * <p>
- * Only the {@link #safeInstance() safe instance} is guaranteed to work on your
- * JVM, as a consequence it is advised to use the {@link #fastestInstance()} or
- * {@link #fastestJavaInstance()} to pull a {@link XXHashFactory} instance.
  * <p>
  * All methods from this class are very costly, so you should get an instance
  * once, and then reuse it whenever possible. This is typically done by storing
@@ -44,45 +27,7 @@ import net.jpountz.util.Utils;
  */
 public final class XXHashFactory {
 
-  private static XXHashFactory instance(String impl) {
-    try {
-      return new XXHashFactory(impl);
-    } catch (Exception e) {
-      throw new AssertionError(e);
-    }
-  }
-
-  private static XXHashFactory NATIVE_INSTANCE,
-                               JAVA_UNSAFE_INSTANCE,
-                               JAVA_SAFE_INSTANCE;
-
-  /**
-   * Returns a {@link XXHashFactory} that returns {@link XXHash32} instances that
-   *  are native bindings to the original C API.
-   * <p>
-   * Please note that this instance has some traps you should be aware of:<ol>
-   * <li>Upon loading this instance, files will be written to the temporary
-   * directory of the system. Although these files are supposed to be deleted
-   * when the JVM exits, they might remain on systems that don't support
-   * removal of files being used such as Windows.
-   * <li>The instance can only be loaded once per JVM. This can be a problem
-   * if your application uses multiple class loaders (such as most servlet
-   * containers): this instance will only be available to the children of the
-   * class loader which has loaded it. As a consequence, it is advised to
-   * either not use this instance in webapps or to put this library in the lib
-   * directory of your servlet container so that it is loaded by the system
-   * class loader.
-   * </ol>
-   *
-   * @return a {@link XXHashFactory} that returns {@link XXHash32} instances that
-   *  are native bindings to the original C API.
-   */
-  public static synchronized XXHashFactory nativeInstance() {
-    if (NATIVE_INSTANCE == null) {
-      NATIVE_INSTANCE = instance("JNI");
-    }
-    return NATIVE_INSTANCE;
-  }
+  private static XXHashFactory INSTANCE;
 
   /**
    * Returns a {@link XXHashFactory} that returns {@link XXHash32} instances that
@@ -90,96 +35,24 @@ public final class XXHashFactory {
    *
    * @return a {@link XXHashFactory} that returns {@link XXHash32} instances that
    *  are written with Java's official API.
-   */
-  public static synchronized XXHashFactory safeInstance() {
-    if (JAVA_SAFE_INSTANCE == null) {
-      JAVA_SAFE_INSTANCE = instance("JavaSafe");
-    }
-    return JAVA_SAFE_INSTANCE;
-  }
-
-  /**
-   * Returns a {@link XXHashFactory} that returns {@link XXHash32} instances that
-   *  may use {@link sun.misc.Unsafe} to speed up hashing.
-   *
-   * @return a {@link XXHashFactory} that returns {@link XXHash32} instances that
-   *  may use {@link sun.misc.Unsafe} to speed up hashing.
-   */
-  public static synchronized XXHashFactory unsafeInstance() {
-    if (JAVA_UNSAFE_INSTANCE == null) {
-      JAVA_UNSAFE_INSTANCE = instance("JavaUnsafe");
-    }
-    return JAVA_UNSAFE_INSTANCE;
-  }
-
-  /**
-   * Returns the fastest available {@link XXHashFactory} instance which does not
-   * rely on JNI bindings. It first tries to load the
-   * {@link #unsafeInstance() unsafe instance}, and then the
-   * {@link #safeInstance() safe Java instance} if the JVM doesn't have a
-   * working {@link sun.misc.Unsafe}.
-   *
-   * @return the fastest available {@link XXHashFactory} instance which does not
-   * rely on JNI bindings.
-   */
-  public static XXHashFactory fastestJavaInstance() {
-    if (Utils.isUnalignedAccessAllowed()) {
-      try {
-        return unsafeInstance();
-      } catch (Throwable t) {
-        return safeInstance();
-      }
-    } else {
-      return safeInstance();
-    }
-  }
-
-  /**
-   * Returns the fastest available {@link XXHashFactory} instance. If the class
-   * loader is the system class loader and if the
-   * {@link #nativeInstance() native instance} loads successfully, then the
-   * {@link #nativeInstance() native instance} is returned, otherwise the
-   * {@link #fastestJavaInstance() fastest Java instance} is returned.
-   * <p>
-   * Please read {@link #nativeInstance() javadocs of nativeInstance()} before
-   * using this method.
-   *
-   * @return the fastest available {@link XXHashFactory} instance.
    */
   public static XXHashFactory fastestInstance() {
-    if (Native.isLoaded()
-        || Native.class.getClassLoader() == ClassLoader.getSystemClassLoader()) {
-      try {
-        return nativeInstance();
-      } catch (Throwable t) {
-        return fastestJavaInstance();
-      }
-    } else {
-      return fastestJavaInstance();
+    if (INSTANCE == null) {
+      INSTANCE = new XXHashFactory();
     }
+    return INSTANCE;
   }
 
-  @SuppressWarnings("unchecked")
-  private static <T> T classInstance(String cls) throws NoSuchFieldException, SecurityException, ClassNotFoundException, IllegalArgumentException, IllegalAccessException {
-    ClassLoader loader = XXHashFactory.class.getClassLoader();
-    loader = loader == null ? ClassLoader.getSystemClassLoader() : loader;
-    final Class<?> c = loader.loadClass(cls);
-    Field f = c.getField("INSTANCE");
-    return (T) f.get(null);
-  }
-
-  private final String impl;
   private final XXHash32 hash32;
   private final XXHash64 hash64;
   private final StreamingXXHash32.Factory streamingHash32Factory;
   private final StreamingXXHash64.Factory streamingHash64Factory;
 
-  private XXHashFactory(String impl) throws ClassNotFoundException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
-    this.impl = impl;
-    hash32 = classInstance("net.jpountz.xxhash.XXHash32" + impl);
-    streamingHash32Factory = classInstance("net.jpountz.xxhash.StreamingXXHash32" + impl + "$Factory");
-    hash64 = classInstance("net.jpountz.xxhash.XXHash64" + impl);
-    streamingHash64Factory = classInstance("net.jpountz.xxhash.StreamingXXHash64" + impl + "$Factory");
+  private XXHashFactory() throws SecurityException, IllegalArgumentException {
+    hash32 = new XXHash32JavaSafe();
+    streamingHash32Factory = new StreamingXXHash32JavaSafe.Factory();
+    hash64 = new XXHash64JavaSafe();
+    streamingHash64Factory = new StreamingXXHash64JavaSafe.Factory();
 
     // make sure it can run
     final byte[] bytes = new byte[100];
@@ -239,21 +112,6 @@ public final class XXHashFactory {
    */
   public StreamingXXHash64 newStreamingHash64(long seed) {
     return streamingHash64Factory.newStreamingHash(seed);
-  }
-
-  /**
-   * Prints the fastest instance.
-   *
-   * @param args no argument required
-   */
-  public static void main(String[] args) {
-    System.out.println("Fastest instance is " + fastestInstance());
-    System.out.println("Fastest Java instance is " + fastestJavaInstance());
-  }
-
-  @Override
-  public String toString() {
-    return getClass().getSimpleName() + ":" + impl;
   }
 
 }

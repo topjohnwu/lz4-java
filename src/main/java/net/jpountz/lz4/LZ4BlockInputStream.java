@@ -16,13 +16,10 @@ package net.jpountz.lz4;
  * limitations under the License.
  */
 
-import static net.jpountz.lz4.LZ4BlockOutputStream.COMPRESSION_LEVEL_BASE;
-import static net.jpountz.lz4.LZ4BlockOutputStream.COMPRESSION_METHOD_LZ4;
-import static net.jpountz.lz4.LZ4BlockOutputStream.COMPRESSION_METHOD_RAW;
-import static net.jpountz.lz4.LZ4BlockOutputStream.DEFAULT_SEED;
-import static net.jpountz.lz4.LZ4BlockOutputStream.HEADER_LENGTH;
-import static net.jpountz.lz4.LZ4BlockOutputStream.MAGIC;
-import static net.jpountz.lz4.LZ4BlockOutputStream.MAGIC_LENGTH;
+import net.jpountz.util.SafeUtils;
+import net.jpountz.xxhash.StreamingXXHash32;
+import net.jpountz.xxhash.XXHash32;
+import net.jpountz.xxhash.XXHashFactory;
 
 import java.io.EOFException;
 import java.io.FilterInputStream;
@@ -30,10 +27,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.Checksum;
 
-import net.jpountz.util.SafeUtils;
-import net.jpountz.xxhash.StreamingXXHash32;
-import net.jpountz.xxhash.XXHash32;
-import net.jpountz.xxhash.XXHashFactory;
+import static net.jpountz.lz4.LZ4BlockOutputStream.COMPRESSION_LEVEL_BASE;
+import static net.jpountz.lz4.LZ4BlockOutputStream.COMPRESSION_METHOD_LZ4;
+import static net.jpountz.lz4.LZ4BlockOutputStream.COMPRESSION_METHOD_RAW;
+import static net.jpountz.lz4.LZ4BlockOutputStream.DEFAULT_SEED;
+import static net.jpountz.lz4.LZ4BlockOutputStream.HEADER_LENGTH;
+import static net.jpountz.lz4.LZ4BlockOutputStream.MAGIC;
+import static net.jpountz.lz4.LZ4BlockOutputStream.MAGIC_LENGTH;
 
 /**
  * {@link InputStream} implementation to decode data written with
@@ -111,11 +111,11 @@ public class LZ4BlockInputStream extends FilterInputStream {
    * @param stopOnEmptyBlock  whether read is stopped on an empty block
    *
    * @see #LZ4BlockInputStream(InputStream, LZ4FastDecompressor, Checksum, boolean)
-   * @see LZ4Factory#fastestInstance()
+   * @see LZ4Factory#getInstance()
    * @see StreamingXXHash32#asChecksum()
    */
   public LZ4BlockInputStream(InputStream in, boolean stopOnEmptyBlock) {
-    this(in, LZ4Factory.fastestInstance().fastDecompressor(), XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED).asChecksum(), stopOnEmptyBlock);
+    this(in, LZ4Factory.getInstance().fastDecompressor(), XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED).asChecksum(), stopOnEmptyBlock);
   }
 
   /**
@@ -124,10 +124,10 @@ public class LZ4BlockInputStream extends FilterInputStream {
    * @param in                the {@link InputStream} to poll
    *
    * @see #LZ4BlockInputStream(InputStream, LZ4FastDecompressor)
-   * @see LZ4Factory#fastestInstance()
+   * @see LZ4Factory#getInstance()
    */
   public LZ4BlockInputStream(InputStream in) {
-    this(in, LZ4Factory.fastestInstance().fastDecompressor());
+    this(in, LZ4Factory.getInstance().fastDecompressor());
   }
 
   @Override

@@ -16,14 +16,14 @@ package net.jpountz.lz4;
  * limitations under the License.
  */
 
+import net.jpountz.util.SafeUtils;
+import net.jpountz.xxhash.StreamingXXHash32;
+import net.jpountz.xxhash.XXHashFactory;
+
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.zip.Checksum;
-
-import net.jpountz.util.SafeUtils;
-import net.jpountz.xxhash.StreamingXXHash32;
-import net.jpountz.xxhash.XXHashFactory;
 
 /**
  * Streaming LZ4 (not compatible with the LZ4 Frame format).
@@ -137,7 +137,7 @@ public class LZ4BlockOutputStream extends FilterOutputStream {
    * @see LZ4Factory#fastCompressor()
    */
   public LZ4BlockOutputStream(OutputStream out, int blockSize) {
-    this(out, blockSize, LZ4Factory.fastestInstance().fastCompressor());
+    this(out, blockSize, LZ4Factory.getInstance().fastCompressor());
   }
 
   /**

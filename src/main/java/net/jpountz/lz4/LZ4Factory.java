@@ -16,31 +16,13 @@ package net.jpountz.lz4;
  * limitations under the License.
  */
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
-import net.jpountz.util.Native;
-import net.jpountz.util.Utils;
 import static net.jpountz.lz4.LZ4Constants.DEFAULT_COMPRESSION_LEVEL;
 import static net.jpountz.lz4.LZ4Constants.MAX_COMPRESSION_LEVEL;
 
 /**
  * Entry point for the LZ4 API.
- * <p>
- * This class has 3 instances<ul>
- * <li>a {@link #nativeInstance() native} instance which is a JNI binding to
- * <a href="https://github.com/lz4/lz4">the original LZ4 C implementation</a>.
- * <li>a {@link #safeInstance() safe Java} instance which is a pure Java port
- * of the original C library,</li>
- * <li>an {@link #unsafeInstance() unsafe Java} instance which is a Java port
- * using the unofficial {@link sun.misc.Unsafe} API.
- * </ul>
- * <p>
- * Only the {@link #safeInstance() safe instance} is guaranteed to work on your
- * JVM, as a consequence it is advised to use the {@link #fastestInstance()} or
- * {@link #fastestJavaInstance()} to pull a {@link LZ4Factory} instance.
  * <p>
  * All methods from this class are very costly, so you should get an instance
  * once, and then reuse it whenever possible. This is typically done by storing
@@ -48,52 +30,7 @@ import static net.jpountz.lz4.LZ4Constants.MAX_COMPRESSION_LEVEL;
  */
 public final class LZ4Factory {
 
-  private static LZ4Factory instance(String impl) {
-    try {
-      return new LZ4Factory(impl);
-    } catch (Exception e) {
-      throw new AssertionError(e);
-    }
-  }
-
-  private static LZ4Factory NATIVE_INSTANCE,
-                            JAVA_UNSAFE_INSTANCE,
-                            JAVA_SAFE_INSTANCE;
-
-  /**
-   * Returns a {@link LZ4Factory} instance that returns compressors and
-   * decompressors that are native bindings to the original C library.
-   * <p>
-   * Please note that this instance has some traps you should be aware of:<ol>
-   * <li>Upon loading this instance, files will be written to the temporary
-   * directory of the system. Although these files are supposed to be deleted
-   * when the JVM exits, they might remain on systems that don't support
-   * removal of files being used such as Windows.
-   * <li>The instance can only be loaded once per JVM. This can be a problem
-   * if your application uses multiple class loaders (such as most servlet
-   * containers): this instance will only be available to the children of the
-   * class loader which has loaded it. As a consequence, it is advised to
-   * either not use this instance in webapps or to put this library in the lib
-   * directory of your servlet container so that it is loaded by the system
-   * class loader.
-   * <li>From lz4-java version 1.6.0, a {@link LZ4FastDecompressor} instance
-   * returned by {@link #fastDecompressor()} of this instance is SLOWER
-   * than a {@link LZ4SafeDecompressor} instance returned by
-   * {@link #safeDecompressor()}, due to a change in the original LZ4
-   * C implementation. The corresponding C API function is deprecated.
-   * Hence use of {@link #fastDecompressor()} is deprecated
-   * for this instance.
-   * </ol>
-   *
-   * @return a {@link LZ4Factory} instance that returns compressors and
-   * decompressors that are native bindings to the original C library
-   */
-  public static synchronized LZ4Factory nativeInstance() {
-    if (NATIVE_INSTANCE == null) {
-      NATIVE_INSTANCE = instance("JNI");
-    }
-    return NATIVE_INSTANCE;
-  }
+  private static LZ4Factory INSTANCE;
 
   /**
    * Returns a {@link LZ4Factory} instance that returns compressors and
@@ -102,103 +39,28 @@ public final class LZ4Factory {
    * @return a {@link LZ4Factory} instance that returns compressors and
    * decompressors that are written with Java's official API.
    */
-  public static synchronized LZ4Factory safeInstance() {
-    if (JAVA_SAFE_INSTANCE == null) {
-      JAVA_SAFE_INSTANCE = instance("JavaSafe");
+  public static LZ4Factory getInstance() {
+    if (INSTANCE == null) {
+      INSTANCE = new LZ4Factory();
     }
-    return JAVA_SAFE_INSTANCE;
+    return INSTANCE;
   }
 
-  /**
-   * Returns a {@link LZ4Factory} instance that returns compressors and
-   * decompressors that may use {@link sun.misc.Unsafe} to speed up compression
-   * and decompression.
-   *
-   * @return a {@link LZ4Factory} instance that returns compressors and
-   * decompressors that may use {@link sun.misc.Unsafe} to speed up compression
-   * and decompression.
-   */
-  public static synchronized LZ4Factory unsafeInstance() {
-    if (JAVA_UNSAFE_INSTANCE == null) {
-      JAVA_UNSAFE_INSTANCE = instance("JavaUnsafe");
-    }
-    return JAVA_UNSAFE_INSTANCE;
-  }
-
-  /**
-   * Returns the fastest available {@link LZ4Factory} instance which does not
-   * rely on JNI bindings. It first tries to load the
-   * {@link #unsafeInstance() unsafe instance}, and then the
-   * {@link #safeInstance() safe Java instance} if the JVM doesn't have a
-   * working {@link sun.misc.Unsafe}.
-   *
-   * @return the fastest available {@link LZ4Factory} instance which does not
-   * rely on JNI bindings.
-   */
-  public static LZ4Factory fastestJavaInstance() {
-    if (Utils.isUnalignedAccessAllowed()) {
-      try {
-        return unsafeInstance();
-      } catch (Throwable t) {
-        return safeInstance();
-      }
-    } else {
-      return safeInstance();
-    }
-  }
-
-  /**
-   * Returns the fastest available {@link LZ4Factory} instance. If the class
-   * loader is the system class loader and if the
-   * {@link #nativeInstance() native instance} loads successfully, then the
-   * {@link #nativeInstance() native instance} is returned, otherwise the
-   * {@link #fastestJavaInstance() fastest Java instance} is returned.
-   * <p>
-   * Please read {@link #nativeInstance() javadocs of nativeInstance()} before
-   * using this method.
-   *
-   * @return the fastest available {@link LZ4Factory} instance
-   */
-  public static LZ4Factory fastestInstance() {
-    if (Native.isLoaded()
-        || Native.class.getClassLoader() == ClassLoader.getSystemClassLoader()) {
-      try {
-        return nativeInstance();
-      } catch (Throwable t) {
-        return fastestJavaInstance();
-      }
-    } else {
-      return fastestJavaInstance();
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  private static <T> T classInstance(String cls) throws NoSuchFieldException, SecurityException, ClassNotFoundException, IllegalArgumentException, IllegalAccessException {
-    ClassLoader loader = LZ4Factory.class.getClassLoader();
-    loader = loader == null ? ClassLoader.getSystemClassLoader() : loader;
-    final Class<?> c = loader.loadClass(cls);
-    Field f = c.getField("INSTANCE");
-    return (T) f.get(null);
-  }
-
-  private final String impl;
   private final LZ4Compressor fastCompressor;
   private final LZ4Compressor highCompressor;
   private final LZ4FastDecompressor fastDecompressor;
   private final LZ4SafeDecompressor safeDecompressor;
   private final LZ4Compressor[] highCompressors = new LZ4Compressor[MAX_COMPRESSION_LEVEL+1];
 
-  private LZ4Factory(String impl) throws ClassNotFoundException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, NoSuchMethodException, InstantiationException, InvocationTargetException {
-    this.impl = impl;
-    fastCompressor = classInstance("net.jpountz.lz4.LZ4" + impl + "Compressor");
-    highCompressor = classInstance("net.jpountz.lz4.LZ4HC" + impl + "Compressor");
-    fastDecompressor = classInstance("net.jpountz.lz4.LZ4" + impl + "FastDecompressor");
-    safeDecompressor = classInstance("net.jpountz.lz4.LZ4" + impl + "SafeDecompressor");
-    Constructor<? extends LZ4Compressor> highConstructor = highCompressor.getClass().getDeclaredConstructor(int.class);
+  private LZ4Factory() throws SecurityException, IllegalArgumentException {
+    fastCompressor = new LZ4JavaSafeCompressor();
+    highCompressor = new LZ4HCJavaSafeCompressor();
+    fastDecompressor = new LZ4JavaSafeFastDecompressor();
+    safeDecompressor = new LZ4JavaSafeSafeDecompressor();
     highCompressors[DEFAULT_COMPRESSION_LEVEL] = highCompressor;
-    for(int level = 1; level <= MAX_COMPRESSION_LEVEL; level++) {
+    for (int level = 1; level <= MAX_COMPRESSION_LEVEL; level++) {
       if(level == DEFAULT_COMPRESSION_LEVEL) continue;
-      highCompressors[level] = highConstructor.newInstance(level);
+      highCompressors[level] = new LZ4HCJavaSafeCompressor(level);
     }
 
     // quickly test that everything works as expected
@@ -271,11 +133,9 @@ public final class LZ4Factory {
 
   /**
    * Returns a {@link LZ4FastDecompressor} instance.
-   * Use of this method is deprecated for the {@link #nativeInstance() native instance}.
    *
    * @return a {@link LZ4FastDecompressor} instance
    *
-   * @see #nativeInstance()
    */
   public LZ4FastDecompressor fastDecompressor() {
     return fastDecompressor;
@@ -288,21 +148,6 @@ public final class LZ4Factory {
    */
   public LZ4SafeDecompressor safeDecompressor() {
     return safeDecompressor;
-  }
-
-  /**
-   * Prints the fastest instance.
-   *
-   * @param args no argument required
-   */
-  public static void main(String[] args) {
-    System.out.println("Fastest instance is " + fastestInstance());
-    System.out.println("Fastest Java instance is " + fastestJavaInstance());
-  }
-
-  @Override
-  public String toString() {
-    return getClass().getSimpleName() + ":" + impl;
   }
 
 }
